@@ -24,7 +24,7 @@ module.exports = {
     require('mead-plugin-source-proxy')
   ],
 
-  // Define a source using GCS
+  // Define a source using the proxy adapter
   sources: [
     {
       name: 'my-proxy-source',

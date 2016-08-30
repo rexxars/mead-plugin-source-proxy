@@ -59,7 +59,7 @@ test('rejects URLs that point to private hosts by default', t => {
   })
 })
 
-test.skip('can be told not to reject URLs that point to private hosts', t => {
+test('can be told not to reject URLs that point to private hosts', t => {
   const localBuf = fs.readFileSync(path.join(__dirname, 'fixtures', 'mead.png'))
   const srv = http.createServer((req, res) => {
     res.writeHead(200, {'Content-Type': 'image/png'})

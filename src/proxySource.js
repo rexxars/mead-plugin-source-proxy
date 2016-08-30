@@ -82,6 +82,5 @@ function isPrivateUrl(url) {
 module.exports = {
   name: 'proxy',
   type: 'source',
-  handler: proxySource,
-  getImageStream
+  handler: proxySource
 }

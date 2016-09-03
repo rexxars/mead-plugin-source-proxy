@@ -25,10 +25,10 @@ module.exports = {
   ],
 
   // Define a source using the proxy adapter
-  sources: [
-    {
-      name: 'my-proxy-source',
-      adapter: 'proxy',
+  sources: [{
+    name: 'my-proxy-source',
+    adapter: {
+      type 'proxy',
       config: {
         // Secure token is required for this source, to prevent abuse
         secureUrlToken: 'someToken',
@@ -48,7 +48,7 @@ module.exports = {
         retries: 1
       }
     }
-  ]
+  }]
 }
 ```
 

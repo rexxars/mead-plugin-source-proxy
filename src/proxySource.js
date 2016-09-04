@@ -1,8 +1,9 @@
-const pkg = require('../package.json')
-const got = require('got')
 const Boom = require('boom')
+const httpGet = require('simple-get')
 const parallel = require('async.parallel')
 const urlIsPrivate = require('url-is-private')
+const debug = require('debug')('mead:proxy')
+const pkg = require('../package.json')
 
 const headers = {
   'User-Agent': `mead/proxy ${pkg.version} (https://github.com/rexxars/mead)`
@@ -11,20 +12,16 @@ const headers = {
 const defaultConfig = {
   allowPrivateHosts: false,
   timeout: 7500,
-  retries: 3
+  maxRedirects: 3
 }
 
 function proxySource(conf) {
   const config = Object.assign({}, defaultConfig, conf)
 
-  if (!config.secureUrlToken) {
-    throw Boom.badImplementation('Proxy sources require a `secureUrlToken` configuration parameter')
-  }
-
   return {
     getImageStream: getImageStreamer(config),
     requiresSignedUrls: true,
-    processStreamError
+    processStreamError: wrapError
   }
 }
 
@@ -33,9 +30,18 @@ function getImageStreamer(config) {
 }
 
 function getImageStream(config, url, callback) {
+  debug(`Request for URL ${url}`)
+
   if (!/^https?:\/\//i.test(url)) {
+    debug('Rejecting URL because of HTTP/HTTPS prefix check')
     setImmediate(callback, Boom.badRequest('Only http/https URLs are supported'))
     return
+  }
+
+  const state = {
+    aborted: false,
+    request: null,
+    timeout: null
   }
 
   const validators = [
@@ -45,25 +51,73 @@ function getImageStream(config, url, callback) {
 
   parallel(validators, (err, results) => {
     if (err) {
+      debug('Request validator threw error')
       callback(err)
       return
     }
 
-    if (results.every(Boolean)) {
-      callback(null, got.stream(url, {
-        headers,
-        timeout: config.timeout,
-        retries: config.retries
-      }))
+    if (!results.every(Boolean)) {
+      debug('Request validator returned false, disallowing request')
+      callback(Boom.badRequest('URL not allowed'))
       return
     }
 
-    callback(Boom.badRequest('URL not allowed'))
+    debug(`Performing HTTP request with connection timeout @ ${config.timeout}`)
+    state.timeout = setTimeout(timeoutRequest, config.timeout, 'open')
+    state.request = httpGet({
+      url,
+      headers,
+      maxRedirects: config.maxRedirects
+    }, onResponse)
   })
+
+  function onResponse(err, response) {
+    clearTimeout(state.timeout)
+
+    if (err) {
+      debug('Request failed (%s) with message: %s', err.code, err.message)
+      callback(wrapError(err, state))
+      return
+    }
+
+    if (response.statusCode >= 400) {
+      debug('Response code was HTTP %d, rejecting', response.statusCode)
+      callback(wrapError(httpError(response)))
+      return
+    }
+
+    callback(null, response)
+  }
+
+  function timeoutRequest(type) {
+    debug('Timeout reached while opening connection, aborting request')
+    state.aborted = true
+    state.request.abort()
+  }
 }
 
-function processStreamError(error) {
-  const {statusCode, statusMessage} = error
+function httpError(res) {
+  const {statusCode, statusMessage} = res
+  const err = new Error(`HTTP ${statusCode} ${statusMessage}`)
+  err.statusCode = statusCode
+  err.statusMessage = statusMessage
+  return err
+}
+
+function wrapError(err, state = {}) {
+  if (err.code === 'ECONNRESET' && state.aborted) {
+    return Boom.gatewayTimeout()
+  }
+
+  if (err.code === 'ESOCKETTIMEDOUT') {
+    return Boom.badGateway('Socket error trying to reach remote server')
+  }
+
+  const {statusCode, statusMessage} = err
+  if (!statusCode) {
+    return Boom.badImplementation(err)
+  }
+
   return statusCode >= 500
     ? Boom.badGateway(statusMessage)
     : Boom.create(statusCode, statusMessage)

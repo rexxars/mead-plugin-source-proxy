@@ -41,11 +41,11 @@ module.exports = {
           callback(null, url.includes('arnold'))
         },
 
-        // Optional timeout in milliseconds before giving up the request (default: 7500)
+        // Time in milliseconds to wait upon connecting to remote server before giving up request (default: 7500)
         timeout: 3500,
 
-        // Optional number of retries to attempt when encountering errors, before giving up (default: 3)
-        retries: 1
+        // Maximum number of redirects to follow (default: 3)
+        maxRedirects: 1
       }
     }
   }]

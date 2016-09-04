@@ -1,5 +1,6 @@
 const Boom = require('boom')
 const httpGet = require('simple-get')
+const defaults = require('lodash.defaults')
 const parallel = require('async.parallel')
 const urlIsPrivate = require('url-is-private')
 const debug = require('debug')('mead:proxy')
@@ -16,7 +17,7 @@ const defaultConfig = {
 }
 
 function proxySource(conf) {
-  const config = Object.assign({}, defaultConfig, conf)
+  const config = defaults({}, conf, defaultConfig)
 
   return {
     getImageStream: getImageStreamer(config),

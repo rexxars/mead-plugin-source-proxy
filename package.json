@@ -1,6 +1,6 @@
 {
   "name": "mead-plugin-source-proxy",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "http(s) proxy source for the Mead image transformer service",
   "main": "src/proxySource.js",
   "scripts": {

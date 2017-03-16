@@ -30,7 +30,8 @@ function getImageStreamer(config) {
   return (...args) => getImageStream(config, ...args)
 }
 
-function getImageStream(config, url, callback) {
+function getImageStream(config, context, callback) {
+  const url = context.urlPath
   debug(`Request for URL ${url}`)
 
   if (!/^https?:\/\//i.test(url)) {

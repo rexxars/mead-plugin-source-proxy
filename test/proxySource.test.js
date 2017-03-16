@@ -42,7 +42,7 @@ test('requires signed urls by default', t => {
 })
 
 test('throws on non-http/https url', t => {
-  proxySource({}).getImageStream('ftp://bar.baz/image.png', err => {
+  proxySource({}).getImageStream({urlPath: 'ftp://bar.baz/image.png'}, err => {
     t.ok(err instanceof Error, 'should error')
     t.ok(err.message.includes('http/https'), 'should include http/https in message')
     t.end()
@@ -50,7 +50,7 @@ test('throws on non-http/https url', t => {
 })
 
 test('rejects URLs that point to private hosts by default', t => {
-  proxySource({}).getImageStream('http://127.0.0.1/foo/bar.png', err => {
+  proxySource({}).getImageStream({urlPath: 'http://127.0.0.1/foo/bar.png'}, err => {
     t.ok(err instanceof Error, 'should error')
     t.ok(err.message.includes('URL not allowed'), 'should tell the user that url is not allowed')
     t.end()
@@ -67,7 +67,7 @@ test('can be told not to reject URLs that point to private hosts', t => {
   function streamImage() {
     const url = `http://localhost:${srv.address().port}/image.png`
 
-    proxySource({allowPrivateHosts: true}).getImageStream(url, onStreamResponse)
+    proxySource({allowPrivateHosts: true}).getImageStream({urlPath: url}, onStreamResponse)
   }
 
   function onStreamResponse(err, stream) {
@@ -85,12 +85,12 @@ test('can provide a custom function for validating requests', t => {
 
   const allowRequest = (url, cb) => cb(null, url.includes('schnauzer.png'))
 
-  proxySource({allowRequest}).getImageStream('http://mead.science/retriever.png', err => {
+  proxySource({allowRequest}).getImageStream({urlPath: 'http://mead.science/retriever.png'}, err => {
     t.ok(err instanceof Error, 'should error')
     t.ok(err.message.includes('URL not allowed'), 'should tell the user that url is not allowed')
   })
 
-  proxySource({allowRequest}).getImageStream('https://espen.codes/schnauzer.png', err => {
+  proxySource({allowRequest}).getImageStream({urlPath: 'https://espen.codes/schnauzer.png'}, err => {
     t.ifError(err, 'should not error')
   })
 })
@@ -98,7 +98,7 @@ test('can provide a custom function for validating requests', t => {
 test('can provide a custom function for validating requests', t => {
   const allowRequest = (url, cb) => cb(new Error('Snarkelsniffel in the capasitor'))
 
-  proxySource({allowRequest}).getImageStream('http://mead.science/terrier.png', err => {
+  proxySource({allowRequest}).getImageStream({urlPath: 'http://mead.science/terrier.png'}, err => {
     t.ok(err instanceof Error, 'should error')
     t.ok(err.message.includes('Snarkelsniffel'), 'should tell the user about the error')
     t.end()
@@ -119,7 +119,7 @@ test('provides bad gateway for remote 500s', t => {
 
   const streamImage = () => {
     const url = `http://localhost:${srv.address().port}/image.png`
-    proxySource({allowPrivateHosts: true}).getImageStream(url, onStreamResponse)
+    proxySource({allowPrivateHosts: true}).getImageStream({urlPath: url}, onStreamResponse)
   }
 
   srv.listen(0, streamImage)
@@ -139,7 +139,7 @@ test('provides passes on remote error for 4xx', t => {
 
   const streamImage = () => {
     const url = `http://localhost:${srv.address().port}/image.png`
-    proxySource({allowPrivateHosts: true}).getImageStream(url, onStreamResponse)
+    proxySource({allowPrivateHosts: true}).getImageStream({urlPath: url}, onStreamResponse)
   }
 
   srv.listen(0, streamImage)
@@ -152,7 +152,7 @@ test('handles open/connection timeouts', t => {
     .delayConnection(150)
     .reply(200)
 
-  proxySource({timeout: 75}).getImageStream(`${host}/image.png`, err => {
+  proxySource({timeout: 75}).getImageStream({urlPath: `${host}/image.png`}, err => {
     t.ok(err instanceof Error, 'should error')
     t.equal(err.output.statusCode, 504, 'should give 504')
     t.ok(/time-?out/i.test(err.message), 'should say timeout')
@@ -164,7 +164,7 @@ test('treats unknown errors as 500s', t => {
   const host = 'http://espen.codes'
   nock(host).get('/image.png').replyWithError(new Error('Dont know'))
 
-  proxySource().getImageStream(`${host}/image.png`, err => {
+  proxySource().getImageStream({urlPath: `${host}/image.png`}, err => {
     t.ok(err instanceof Error, 'should error')
     t.equal(err.output.statusCode, 500, 'should give 500')
     t.end()
